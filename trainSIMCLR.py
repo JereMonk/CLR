@@ -29,6 +29,7 @@ def main(arg):
     AREA_THRESHOLD =  custom_data['DATASET']['AREA_THRESHOLD']
     SUBCATS = custom_data['SUBCATS']
     CHECKPOINT_PERIOD = int(custom_data['CHECKPOINT_PERIOD'])
+    CROP_SIZE = int(custom_data['AUGMENTATION']['CROP_SIZE'])
     # GET DATA
 
     generator = get_mixed_generator(DATASET_DAMAGED,DATASET_NON_DAMAGED, batch_size=IMS_PER_BATCH, dim=(INPUT_DIM,INPUT_DIM), to_keep=SUBCATS,area_threshold=AREA_THRESHOLD)
@@ -39,7 +40,7 @@ def main(arg):
 
     # GET AUGMENTATION
 
-    data_augmentation = tf.keras.Sequential([tf.keras.layers.Lambda(CustomAugment())])
+    data_augmentation = tf.keras.Sequential([tf.keras.layers.Lambda(CustomAugment(crop_size=CROP_SIZE,input_dim=INPUT_DIM))])
 
     # GET NEGATIVE MASKS
 

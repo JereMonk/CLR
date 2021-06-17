@@ -13,3 +13,5 @@ DATASET:
   NON_DAMAGED: '/home/ubuntu/shared/data/meta/annotations/gold_standard/2021-06/parts_2021-06_train.json'
   AREA_THRESHOLD: 5000
 CHECKPOINT_PERIOD: 100
+AUGMENTATION:
+  CROP_SIZE: 100

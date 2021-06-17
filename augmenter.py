@@ -68,14 +68,18 @@ def raise_green(image,power):
 
 class CustomAugment(object):
     
-    
+    def __init__(self,crop_size,input_dim) -> None:
+        super().__init__()
+        self.crop_size=crop_size
+        self.input_dim=input_dim
+
     def _call_on_one_sample(self,sample):
         sample = self._random_apply(tf.image.flip_left_right, sample, p=0.5)
         
         sample = self._random_apply(self.augment_color,sample, p=0.8)
         sample = self._random_apply(self._color_jitter, sample, p=0.8)
         sample = self._random_apply(self.random_crop, sample, p=0.8)
-        sample = tf.image.resize(sample,(224,224))
+        sample = tf.image.resize(sample,(self.input_dim,self.input_dim))
         sample = self._random_apply(self.random_blur, sample, p=0.5)
         sample = self._random_apply(self._color_drop, sample, p=0.2)
 
@@ -111,9 +115,9 @@ class CustomAugment(object):
           lambda: func(x),
           lambda: x)
     
-    def random_crop(self,x,size=(180,180,3)):
-        
-        x = tf.image.random_crop(x, size)
+    def random_crop(self,x):
+
+        x = tf.image.random_crop(x, size=(self.crop_size,self.crop_size,3))
         return x
     
     def random_suffle(self,x):
