@@ -66,7 +66,7 @@ def train_simclr(model, dataset, optimizer, criterion,data_augmentation,temperat
     writer = tf.summary.create_file_writer(dir_path)
 
     while(step_counter<max_iter):
-    #for epoch in tqdm(range(epochs)):
+    
         print("\nStart of iter %d" % (step_counter,))
         for image_batch in dataset:
             step_counter+=1
@@ -76,15 +76,14 @@ def train_simclr(model, dataset, optimizer, criterion,data_augmentation,temperat
             loss = train_step(a, b, model, optimizer, criterion, temperature,batch_size,negative_mask)
             step_wise_loss.append(loss)
 
-        #epoch_wise_loss.append(np.mean(step_wise_loss))
-        
-        if step_counter%ckpt_freq ==0:
-                model.save_weights(dir_path+"/ckpt"+str(step_counter))
+            
+            if step_counter%ckpt_freq ==0:
+                    model.save_weights(dir_path+"/ckpt"+str(step_counter))
 
-        if step_counter %1 == 0:
-            final_loss =np.mean(step_wise_loss)
-            print("step: {} loss: {:.3f}".format(step_counter + 1, final_loss))
-            step_wise_loss=[]
-            with writer.as_default():
-                    tf.summary.scalar('loss', final_loss, step=step_counter)
-                    tf.summary.scalar('learning rate', optimizer.lr, step=step_counter)
+            if step_counter %1 == 0:
+                final_loss =np.mean(step_wise_loss)
+                print("step: {} loss: {:.3f}".format(step_counter + 1, final_loss))
+                step_wise_loss=[]
+                with writer.as_default():
+                        tf.summary.scalar('loss', final_loss, step=step_counter)
+                        tf.summary.scalar('learning rate', optimizer.lr, step=step_counter)

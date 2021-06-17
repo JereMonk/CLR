@@ -5,7 +5,7 @@ SUBCATS: ["bumper_back","bumper_front","door_back_left","door_back_right","door_
 SOLVER:
   STEPS: 1000
   MAX_ITER: 50000
-  IMS_PER_BATCH: 1
+  IMS_PER_BATCH: 32
 LOSS:
   TEMPERATURE: 0.1
 DATASET: 
