@@ -1,5 +1,5 @@
 INPUT:
-  DIM: 224
+  DIM: 128
 SUBCATS: ["bumper_back","bumper_front","door_back_left","door_back_right","door_front_left","door_front_right","fender_back_left","fender_back_right","fender_front_left","fender_front_right"] 
 
 SOLVER:
@@ -9,7 +9,7 @@ SOLVER:
 LOSS:
   TEMPERATURE: 0.1
 DATASET: 
-  DAMAGED: '/home/ubuntu/shared/perso/nicolas/Projets/Classifieur_idea/generate_positive_and_negative_from_idea/gs_40004_damages.json'
+  DAMAGED: ['/home/ubuntu/shared/perso/nicolas/Projets/Classifieur_idea/generate_positive_and_negative_from_idea/gs_40004_damages.json', '/home/ubuntu/shared/perso/nicolas/Projets/Classifieur_idea/generate_positive_and_negative_from_idea/176699_damages.json']
   NON_DAMAGED: '/home/ubuntu/shared/data/meta/annotations/gold_standard/2021-06/parts_2021-06_train.json'
   AREA_THRESHOLD: 5000
-CHECKPOINT_PERIOD: 500
+CHECKPOINT_PERIOD: 100

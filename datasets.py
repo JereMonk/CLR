@@ -1,13 +1,13 @@
 import tensorflow as tf
 import numpy as np
 from monk import BBox, Dataset
-
+from monk import Classes
 
 ### DAMAGED
 
 class DamagedDataGenerator(tf.keras.utils.Sequence):
     
-    def __init__(self,dataset, batch_size=32, dim=(128,128), n_channels=3,shuffle=True,to_keep=[],area_threshold=2000):
+    def __init__(self,dataset, batch_size=32, dim=(128,128), n_channels=3,shuffle=True,to_keep=[],area_threshold=5000):
           
         self.dataset=dataset
         self.dim = dim ###
@@ -55,7 +55,9 @@ class DamagedDataGenerator(tf.keras.utils.Sequence):
        
         img_crop = imds.image.crop(BBox(xyxy=[att["x1_part"],att["y1_part"],att["x2_part"],att["y2_part"],])).resize(self.dim)
        
-        return(img_crop.rgb)
+        img = np.array(img_crop.rgb/255,dtype=np.dtype('float32'))
+        
+        return ( img )
         
     def __len__(self):
        
@@ -83,7 +85,7 @@ class DamagedDataGenerator(tf.keras.utils.Sequence):
     def __data_generation(self, list_IDs_temp):
         'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
         # Initialization
-        X = np.empty((self.batch_size, *self.dim, self.n_channels),dtype=int)
+        X = np.empty((self.batch_size, *self.dim, self.n_channels),dtype=np.float32)
         #y = np.empty((self.batch_size), dtype=int)
 
         # Generate data
@@ -98,8 +100,41 @@ class DamagedDataGenerator(tf.keras.utils.Sequence):
         return X
 
 
-def get_damaged_generator(path, batch_size=3, dim=(128,128), to_keep=[]):
-    dataset = Dataset.from_coco(path,"")
+def concat_dataset(datasets, keep_id=False):
+    all_images = []
+    all_classes = {}
+    all_tags = {}
+    for dataset in datasets:
+        if not dataset:
+            continue
+
+        all_images.extend(dataset)
+        all_classes.update({x["name"]: x for x in dataset.classes.iter_objects()})
+        all_tags.update({x["name"]: x for x in dataset.tags.iter_objects()})
+
+    all_classes_obj = list(all_classes.values())
+    all_tags_obj = list(all_tags.values())
+
+    if not keep_id:
+        i = 1
+        for ctype in [all_classes_obj, all_tags_obj]:
+            for obj in ctype:
+                obj["id"] = i
+                i += 1
+
+    dataset = Dataset(classes=Classes(all_classes_obj), tags=Classes(all_tags_obj))
+    for imdb in all_images:
+        dataset.add_image(imdb, force_new_id=True)
+
+    return dataset
+
+def get_damaged_generator(paths, batch_size=3, dim=(128,128), to_keep=[]):
+
+    ds = []
+    for path in paths:
+        dataset = Dataset.from_coco(path,"")
+        ds.append(dataset)
+    dataset = concat_dataset(ds)
     gen = DamagedDataGenerator(dataset,batch_size=batch_size,dim=dim,to_keep=to_keep)
 
     return(gen)
@@ -132,7 +167,7 @@ def my_to_bbox(polygon, allow_unsafe=False):
 
 class NonDamagedDataGenerator(tf.keras.utils.Sequence):
     
-    def __init__(self,dataset, batch_size=3, dim=(128,128), n_channels=3,shuffle=True):
+    def __init__(self,dataset, batch_size=3, dim=(128,128), n_channels=3,shuffle=True,area_threshold=5000):
           
         self.dataset=dataset
         self.dim = dim ###
@@ -140,7 +175,7 @@ class NonDamagedDataGenerator(tf.keras.utils.Sequence):
         self.list_IDs = np.arange(len(dataset)) ###
         self.n_channels = n_channels ##
         self.shuffle = shuffle ##
-        
+        self.area_threshold=area_threshold
         self.get_map_id()
         self.on_epoch_end()
         
@@ -154,7 +189,7 @@ class NonDamagedDataGenerator(tf.keras.utils.Sequence):
             for poly_id,poly in enumerate(imds.anns["polygons"]):
                 
                 if(poly.area>self.area_threshold):
-                    map_id[i]=[0,imds.id,poly_id]
+                    map_id[i]=[imds.id,poly_id]
                     i+=1
                
         self.map_id = map_id
@@ -165,7 +200,9 @@ class NonDamagedDataGenerator(tf.keras.utils.Sequence):
         att =ann.attributes
         img_crop = imds.image.crop(my_to_bbox(ann)).resize(self.dim)
        
-        return(img_crop.rgb)
+        img = np.array(img_crop.rgb/255,dtype=np.dtype('float32'))
+        
+        return ( img )
         
     def __len__(self):
        
@@ -193,7 +230,7 @@ class NonDamagedDataGenerator(tf.keras.utils.Sequence):
     def __data_generation(self, list_IDs_temp):
         'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
         # Initialization
-        X = np.empty((self.batch_size, *self.dim, self.n_channels),dtype=int)
+        X = np.empty((self.batch_size, *self.dim, self.n_channels),dtype=np.float32)
         #y = np.empty((self.batch_size), dtype=int)
 
         # Generate data
@@ -225,7 +262,7 @@ class MixedDataGenerator(tf.keras.utils.Sequence):
         self.dataset_damages=dataset_damages
         self.dim = dim 
         self.batch_size = batch_size  
-        self.list_IDs = np.arange(len(dataset_damages)+len(dataset_parts)) 
+        #self.list_IDs = np.arange(len(dataset_damages)+len(dataset_parts)) 
         self.n_channels = n_channels 
         self.shuffle = shuffle 
         self.to_keep =to_keep
@@ -234,14 +271,14 @@ class MixedDataGenerator(tf.keras.utils.Sequence):
     
 
         self.get_map_id()
-        self.on_epoch_end()
+        #self.on_epoch_end()
         
         #self.labels = labels
         #self.n_classes = n_classes
         
     def get_map_id(self):
         i=0
-        map_id ={}
+        map_id_1 ={}
         
         for _,imds in enumerate(self.dataset_damages):
             parts=[]
@@ -261,17 +298,33 @@ class MixedDataGenerator(tf.keras.utils.Sequence):
                         parts.append(label)
 
             for ind in to_keep:
-                map_id[i]=[1,imds.id,ind]
+                map_id_1[i]=[1,imds.id,ind]
                 i+=1
-                
+        i=0
+        map_id_0 ={}
         for _,imds in enumerate(self.dataset_parts):
             for poly_id,poly in enumerate(imds.anns["polygons"]):
                 
                 if(poly.area>self.area_threshold):
-                    map_id[i]=[0,imds.id,poly_id]
+                    map_id_0[i]=[0,imds.id,poly_id]
                     i+=1
-        
+        ## BALANCE 
+        map_id ={}
+        i=0
+        for j in range(0,min(len(map_id_0),len(map_id_1))):
+            map_id[i]=map_id_0[j]
+            i+=1
+
+        for j in range(0,min(len(map_id_0),len(map_id_1))):
+            map_id[i]=map_id_1[j]
+            i+=1
+
         self.map_id = map_id
+
+        self.list_IDs = np.arange(len(map_id)) 
+        self.indexes = np.arange(len(map_id))
+        if self.shuffle == True:
+            np.random.shuffle(self.indexes)
         
     def load_image(self,ids):
 
@@ -348,8 +401,14 @@ class MixedDataGenerator(tf.keras.utils.Sequence):
         #return X, keras.utils.to_categorical(y, num_classes=self.n_classes)
         return tf.convert_to_tensor(X,dtype=tf.float32)
 
-def get_mixed_generator(path_damaged,path_non_damaged, batch_size=3, dim=(128,128), to_keep='all',area_threshold=2000):
-    dataset_damaged = Dataset.from_coco(path_damaged,"")
+def get_mixed_generator(paths_damaged,path_non_damaged, batch_size=3, dim=(128,128), to_keep='all',area_threshold=2000):
+    
+    ds = []
+    for path in paths_damaged:
+        dataset = Dataset.from_coco(path,"")
+        ds.append(dataset)
+    dataset_damaged = concat_dataset(ds)
+
     dataset_non_damaged = Dataset.from_coco(path_non_damaged)
     if (to_keep!='all'):
         dataset_non_damaged = dataset_non_damaged.filter_images_with_cats(keep=to_keep).filter_cats(keep=to_keep)
