@@ -36,7 +36,7 @@ def main(arg):
 
     # GET MODEL
 
-    model = get_resnet_simclr()
+    model = get_resnet_simclr(hidden_1=256, hidden_2=128,input_size=(INPUT_DIM,INPUT_DIM,3))
 
     # GET AUGMENTATION
 
