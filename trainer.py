@@ -3,7 +3,7 @@ import tensorflow as tf
 from losses import _dot_simililarity_dim1 as sim_func_dim1
 from losses import _dot_simililarity_dim2 as sim_func_dim2
 
-from tqdm import tqdm
+#from tqdm import tqdm
 import numpy as np
 
 
